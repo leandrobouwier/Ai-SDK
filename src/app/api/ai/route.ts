@@ -1,14 +1,25 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { openrouter } from "@/ai/open-router";
+import { tools } from "@/ai/tools";
+import { streamText } from "ai";
+import { NextRequest } from "next/server";
 
-import { openai } from '@ai-sdk/openai';
-import { generateText } from 'ai';
+export async function POST(request: NextRequest) {
+    const { messages } = await request.json()
 
-export async function GET(request: NextRequest) {
-    const result = await generateText({
-        model: openai('gpt-4o'),
-        prompt: 'Traduza "Hello World" para português!',
-        system: 'Você é uma AI especializada em tradução, sempre retorne da maneira sucinta possível.'
+    const result = streamText({
+        model: openrouter.chat('openrouter/free'),
+        tools,
+        messages,
+        maxSteps: 5,
+        system: `Sempre responda em markdown sem aspas no início ou fim da mensagem`,
+        onError(error) {
+            // 🔥 AQUI você vai ver o erro real
+            console.error("STREAM ERROR:", error);
+        },
+        onFinish(event) {
+            console.log("STREAM FINISHED:", event);
+        },
     })
 
-    return NextResponse.json({ message: result.text })
+    return result.toDataStreamResponse()
 }
